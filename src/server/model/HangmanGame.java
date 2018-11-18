@@ -10,7 +10,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import common.Constants;
 import common.Message;
 import common.MsgType;
-/*
+/**@author Liming Liu
  * @role: model for executing the hangman game logic
  * @methods provide for the upper level controller
  * 		HangmanGame(): constructor
@@ -22,6 +22,9 @@ import common.MsgType;
  * 		game state is the state of win/lost/continue
  * 		game status:states of the whole game
  * 		could be confusing
+ * @ changes in version 2.0:
+ * 		1. separate reading file into Dictionary class
+ * 		2.fixed some bugs related to update state message timing
  * 		
  */
 public class HangmanGame {
@@ -32,6 +35,7 @@ public class HangmanGame {
 	private String stateMessage;
 	private String gameStatus;
 	
+	
 	public HangmanGame(Player player) {
 		this.player=player;
 	}
@@ -40,11 +44,14 @@ public class HangmanGame {
 		updateStateMessage();
 	}
 	public void initWord() {
-		String randomWord=this.readRandomWord();
+		String randomWord=Dictionary.getRandomWord();
 		this.word=new Word(randomWord);		
 		int wordLength=word.getNumLetters();
 		this.hintWord=new HintWord(wordLength);
 		this.attempts=wordLength;
+		if(this.gameStatus==null) {
+			this.gameStatus="start";
+		}
 		updateStateMessage();
 	}
 	
@@ -99,24 +106,6 @@ public class HangmanGame {
 	private void continueGame() {
 		this.gameStatus="continue";
 		updateStateMessage();
-	}
-	private String readRandomWord() {
-		String wordFile="words.txt";
-		ArrayList<String> wordList=new ArrayList<String>();
-		
-        try {
-            try (BufferedReader br = new BufferedReader(new FileReader(wordFile))) {
-                String s;
-                while ((s = br.readLine()) != null) {
-                    wordList.add(s);
-                }
-            }
-            int randomNum = ThreadLocalRandom.current().nextInt(0, wordList.size());
-            return wordList.get(randomNum);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }	
 	}
 
 	

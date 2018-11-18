@@ -10,10 +10,28 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import common.MessageException;
-
+/**
+ * uses a selector to operate client channels
+ * 
+ * @ channels:
+ * 		1 server socket channel: for listening
+ * 		multiple client socket channels
+ * @ multiple client handlers:  stay in the same thread as this one. But when creating new game controller which needs
+ * 		to read word file, the game controller will run a new non blocking thread( runs beside the main thread without blocking)
+ * 		 in a thread pool by calling completable future( see in game controller)
+ * @ selector:
+ * 		life cycle: create-> 
+ * 					select key( the keys willl be selected) ->
+ * 					iterate over keys-> 
+ * 					get the handeler from key attachment->
+ * 					do something using handler(if it's accepting new client then need to create new thread in thread pool to read dictionary
+ * 												else, still in the same thead as the server)->
+ * 					wait for new keys to come( or some method calls selector.wakeup() then will immediately start another round of selecting)
+ * @author Liming Liu
+ *
+ */
 public class GameServer {
 	 private static final int LINGER_TIME = 5000;
-	 private static final int TIMEOUT_HALF_HOUR = 1800000;
 	 private int portNo = 8080;
 	 private Selector selector;
 	 private ServerSocketChannel listeningSocketChannel;
@@ -46,6 +64,11 @@ public class GameServer {
 	            System.err.println("Server failure.");
 	        }
 	    }
+	 /**
+	  * the client handler attached to the key will immediately send messages in buffer
+	  * @param key
+	  * @throws IOException
+	  */
 	 private void sendByClientHandler(SelectionKey key) throws IOException {
 	        ClientHandler clientHandler = (ClientHandler) key.attachment();
 	        try {
@@ -56,6 +79,11 @@ public class GameServer {
 	            removeClientHandler(key);
 	        }
 	    }
+	 /**
+	  * the client handler will immediately read from buffer and handle the meesage received
+	  * @param key
+	  * @throws IOException
+	  */
 	 private void recvByClientHandler(SelectionKey key) throws IOException {
 	        ClientHandler handler = (ClientHandler)key.attachment();
 	        try {
@@ -65,12 +93,22 @@ public class GameServer {
 	            removeClientHandler(key);
 	        }
 	    }
-	 
+	 /**
+	  * close channel->cancel key
+	  * will not send disconnect message as client does
+	  * @param clientKey
+	  * @throws IOException
+	  */
 	 private void removeClientHandler(SelectionKey clientKey) throws IOException {
 	        ClientHandler clientHandler = (ClientHandler) clientKey.attachment();
 	        clientHandler.closeClientChannel();
 	        clientKey.cancel();
 	    }
+	 /**
+	  * start a new handler->register the channel to the selector with {key, interested operation, attachment(which is the handler)}
+	  * @param key
+	  * @throws IOException
+	  */
 	 private void startNewHandler(SelectionKey key) throws IOException {
 	        ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
 	        SocketChannel clientChannel = serverSocketChannel.accept();

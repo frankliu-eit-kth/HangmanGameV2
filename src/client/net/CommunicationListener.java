@@ -2,11 +2,11 @@ package client.net;
 
 import java.net.InetSocketAddress;
 
-/**@Frank
+/**
  * 
  * @role: a interface which directly pass the communication events from net layer to view layer,
  * 			there will be no controller layer
- * 
+ * @author Liming Liu
  * 
  * */
 

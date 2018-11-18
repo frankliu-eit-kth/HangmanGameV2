@@ -94,7 +94,12 @@ public class NonBlockingInterpreter implements Runnable {
         			outMgr.println("Sorry you lose");
         		}
         		else {
-        			outMgr.println("Please continue!");
+        			if(gameStatus.getCurrentGameState().equals("start")) {
+        				outMgr.println("Welcome to new game!");
+        				
+        			}else {
+        				outMgr.println("Please continue!");
+        			}
         		}
         	}
         	outMgr.println("Dear "+gameStatus.getPlayerName());

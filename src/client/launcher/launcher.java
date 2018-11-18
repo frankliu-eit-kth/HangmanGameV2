@@ -2,8 +2,8 @@ package client.launcher;
 
 import client.view.NonBlockingInterpreter;
 /**
- * launch the client
- * @author m1339
+ * client launcher
+ * @author Liming Liu
  *
  */
 public class launcher {

@@ -1,13 +1,20 @@
 package common;
 
 import java.util.StringJoiner;
-
+/**
+ * a new class added in this version to reduce the repetition on message handling codes
+ * @author Liming Liu
+ *
+ */
 public class Message {
 	private int length;
 	private MsgType type;
 	private String body;
 	private String wholeMessage;
-	//for client side sending message
+	/**
+	 * for client side sending message
+	 * @param type
+	 */
 	public Message(MsgType type) {
 		// TODO Auto-generated constructor stub
 		this.type=type;
@@ -18,7 +25,11 @@ public class Message {
 		sj1.add(this.type.toString());
 		this.wholeMessage=sj1.toString();
 	}
-	//for client sending input and server sending game message
+	/**
+	 * for client sending input and server sending game message
+	 * @param type
+	 * @param body
+	 */
 	public Message(MsgType type, String body) {
 		this.type=type;
 		this.body=body;
@@ -32,7 +43,10 @@ public class Message {
 		sj2.add(sj1.toString());
 		this.wholeMessage=sj2.toString();
 	}
-	//for receiving
+	/**
+	 * for receiving, check the length header and create new message
+	 * @param wholeMessage
+	 */
 	public Message(String wholeMessage) {
 		this.wholeMessage=wholeMessage;
 		String[] msgParts=wholeMessage.split(Constants.MSG_DELIMETER);

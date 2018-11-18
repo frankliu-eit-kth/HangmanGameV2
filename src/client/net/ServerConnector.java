@@ -16,31 +16,49 @@ import common.Message;
 import common.MsgType;
 /**
  * @role: handles most work in network layer
- * @author m1339
+ * @author Liming Liu
  *
  */
 public class ServerConnector implements Runnable{
-	
-	//private static final String FATAL_COMMUNICATION_MSG = "Lost connection.";
-    //private static final String FATAL_DISCONNECT_MSG = "Could not disconnect, will leave ungracefully.";
-	
+	/**
+	 * msg buffers
+	 */
     private final ByteBuffer msgFromServer = ByteBuffer.allocateDirect(Constants.MAX_MSG_LENGTH);
     private final Queue<ByteBuffer> msgQueueToServer=new ArrayDeque<ByteBuffer>();
+    /**
+     * use listener to pass value to view layer, therefore avoid invoking view layer
+     * use notifier to operate listener
+     */
     private CommunicationListener listener;
+    private final ViewNotifier viewNotifier=new ViewNotifier();
+    /**
+     * connection classes and params
+     */
     private InetSocketAddress serverAddress;
     private SocketChannel socketChannel;
+    /**
+     * selector manages{key set}  select->iterate->for each do operation
+     */
     private Selector selector;
+    /**
+     * flags used
+     */
     private boolean connected;
     private volatile boolean timeToSend = false;
-    private final ViewNotifier viewNotifier=new ViewNotifier();
-  //invoked by view layer
+    /**
+     * invoked by view layer, initiate this connector working
+     * @param host
+     * @param port
+     * @param listener
+     */
     public void startConnection(String host, int port, CommunicationListener listener) {
     	this.listener=listener;
         serverAddress = new InetSocketAddress(host, port);
         new Thread(this).start();
     }
-    
-    
+    /**
+     * use selector to manage socketChannel-> do communication activities
+     */
     @Override
     public void run() {
         try {
@@ -77,7 +95,12 @@ public class ServerConnector implements Runnable{
             ex.printStackTrace();
         }
     }
-    //initiation
+    
+    
+    /**
+     * initialization
+     * @throws IOException
+     */
     private void initChannel() throws IOException {
         socketChannel = SocketChannel.open();
         socketChannel.configureBlocking(false);
@@ -90,42 +113,10 @@ public class ServerConnector implements Runnable{
     }
    
     
-    //sending message
-    public void registerSendingStart() {
-    	resigerSendingMsg(MsgType.START,null);
-    }
-    public void registerSendingUsername(String username) {
-        resigerSendingMsg(MsgType.USER, username);
-    }
-    
-    public void registerSendingInput(String msg) {
-        resigerSendingMsg(MsgType.USER_INPUT, msg);
-    }
-    
-    public void registerDisconnect() throws IOException {
-        connected = false;
-        resigerSendingMsg(MsgType.DISCONNECT, null);
-    }
-   
-    private void completeConnection(SelectionKey key) throws IOException {
-        socketChannel.finishConnect();
-        key.interestOps(SelectionKey.OP_READ);
-        try {
-            InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
-                this.viewNotifier.tellViewConnectionDone(remoteAddress,listener);
-        } catch (IOException couldNotGetRemAddrUsingDefaultInstead) {
-        		this.viewNotifier.tellViewConnectionDone(serverAddress,listener);
-        }
-    }
-    
-    private void completeDisconnect() throws IOException {
-        socketChannel.close();
-        socketChannel.keyFor(selector).cancel();
-        		this.viewNotifier.tellViewDisconnectionDone(listener);
-    }
-   
-    
-    private void resigerSendingMsg(MsgType type,String body) {
+    /**
+     * register messages into buffer
+     */
+    private void queueMsgIntoBuffer(MsgType type,String body) {
     	Message msg;
     	if(body==null) {
     		msg=new Message(type);
@@ -142,7 +133,26 @@ public class ServerConnector implements Runnable{
         selector.wakeup();
         
     }
+    public void registerSendingStart() {
+    	queueMsgIntoBuffer(MsgType.START,null);
+    }
+    public void registerSendingUsername(String username) {
+        queueMsgIntoBuffer(MsgType.USER, username);
+    }
     
+    public void registerSendingInput(String msg) {
+        queueMsgIntoBuffer(MsgType.USER_INPUT, msg);
+    }
+    
+    public void registerDisconnect() throws IOException {
+        connected = false;
+        queueMsgIntoBuffer(MsgType.DISCONNECT, null);
+    }
+    /**
+     * actual sending activity through channel
+     * @param key
+     * @throws IOException
+     */
     private void sendToServer(SelectionKey key) throws IOException {
         ByteBuffer msg;
         synchronized (msgQueueToServer) {
@@ -156,7 +166,36 @@ public class ServerConnector implements Runnable{
             key.interestOps(SelectionKey.OP_READ);
         }
     }
-   
+    /**
+     * after server accepts, complete the connection and notify view layer
+     * @param key
+     * @throws IOException
+     */
+    private void completeConnection(SelectionKey key) throws IOException {
+        socketChannel.finishConnect();
+        key.interestOps(SelectionKey.OP_READ);
+        try {
+            InetSocketAddress remoteAddress = (InetSocketAddress) socketChannel.getRemoteAddress();
+                this.viewNotifier.tellViewConnectionDone(remoteAddress,listener);
+        } catch (IOException couldNotGetRemAddrUsingDefaultInstead) {
+        		this.viewNotifier.tellViewConnectionDone(serverAddress,listener);
+        }
+    }
+    /**
+     * after sending disconnect message, complete the disconnection
+     * @throws IOException
+     */
+    private void completeDisconnect() throws IOException {
+        socketChannel.close();
+        socketChannel.keyFor(selector).cancel();
+        		this.viewNotifier.tellViewDisconnectionDone(listener);
+    }
+    
+   /**
+    * receive from server ,extract the message and notify view
+    * @param key
+    * @throws Exception
+    */
     private void recvFromServer(SelectionKey key) throws Exception  {
         int numOfReadBytes = socketChannel.read(msgFromServer);
         if (numOfReadBytes == -1) {
@@ -165,11 +204,8 @@ public class ServerConnector implements Runnable{
         
         String recvdString = extractMessageFromBuffer();
         Message msg=new Message(recvdString);
-        //for test
-        System.out.println("server conncetion for test:"+ msg.getBody());
         this.viewNotifier.tellViewMsgReceived(msg.getBody(),listener);
     }
-    
     private String extractMessageFromBuffer() {
         msgFromServer.flip();
         byte[] bytes = new byte[msgFromServer.remaining()];
