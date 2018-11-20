@@ -8,6 +8,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
 
 import common.MessageException;
 /**
@@ -35,6 +36,7 @@ public class GameServer {
 	 private int portNo = 8080;
 	 private Selector selector;
 	 private ServerSocketChannel listeningSocketChannel;
+	 public static CountDownLatch readingThreadFinishSignal=new CountDownLatch(1);
 	
 	 private void serve() {
 	        try {
@@ -53,6 +55,7 @@ public class GameServer {
 	                    if (key.isAcceptable()) {
 	                        startNewHandler(key);
 	                    } else if (key.isReadable()) {
+	                    	readingThreadFinishSignal.await();
 	                        recvByClientHandler(key);
 	                    } else if (key.isWritable()) {
 	                        sendByClientHandler(key);

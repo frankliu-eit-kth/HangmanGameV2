@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import server.model.Dictionary;
 import server.model.HangmanGame;
 import server.model.Player;
+import server.net.GameServer;
 
 /**
  * @role: maintains the game status and handles the game logic for a specific game process( a game,client pair)
@@ -38,7 +39,7 @@ public class GameController {
 				System.out.println("game controller create new game failed");
 				e.printStackTrace();
 			}
-		});
+		}).thenRun(()->GameServer.readingThreadFinishSignal.countDown());
 	}
 	/**
 	 * 
