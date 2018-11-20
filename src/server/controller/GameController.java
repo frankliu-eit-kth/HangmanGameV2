@@ -29,17 +29,23 @@ public class GameController {
 	 * @param playerIp
 	 */
 	public GameController(String playerIp) {
+		// working thread
 		CompletableFuture.runAsync(()->{
+			//read file
 			Dictionary.readWords();
 		}).thenRun(()->{
 			try {
+				// create new game
 				Player player=new Player(playerIp,0,"player");
 				game=new HangmanGame(player);
 			}catch(Exception e) {
 				System.out.println("game controller create new game failed");
 				e.printStackTrace();
 			}
-		}).thenRun(()->GameServer.readingThreadFinishSignal.countDown());
+		}).thenRun(
+				//release the latch in main thread to permit following operations
+				()->GameServer.readingThreadFinishSignal.countDown()
+			);
 	}
 	/**
 	 * 
